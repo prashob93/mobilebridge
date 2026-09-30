@@ -50,7 +50,15 @@ export class LaptopLink {
     this.d.send({ kind: "ice", candidate: c.candidate ?? "", sdpMid: c.sdpMid ?? null, sdpMLineIndex: c.sdpMLineIndex ?? null });
   }
 
-  async onSignal(p: SignalPayload) {
+  private chain: Promise<void> = Promise.resolve();
+
+  /** Signals are handled strictly in order: the phone's ICE candidates arrive right behind its offer,
+   *  while the offer is still being verified, and must wait for it instead of being dropped. */
+  onSignal(p: SignalPayload) {
+    this.chain = this.chain.then(() => this.handle(p));
+  }
+
+  private async handle(p: SignalPayload) {
     try {
       if (p.kind === "offer") {
         const ok = await verifyPhoneSignature(this.d.phonePub, `mobilebridge-sdp:offer:${this.d.sessionId}:${p.sdp}`, p.sig);
