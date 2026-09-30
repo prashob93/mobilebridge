@@ -1,0 +1,1 @@
+{"name":"@mobilebridge/server","version":"0.1.0","type":"module","scripts":{"dev":"tsx watch src/server.ts","start":"tsx src/server.ts","test":"tsx --test test/*.test.ts"},"dependencies":{"ws":"^8.22.0","zod":"^4.6.5"},"devDependencies":{"@types/node":"^26.6.3","@types/ws":"^8.18.2","tsx":"^4.23.15","typescript":"^7.0.2"}}

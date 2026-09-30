@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@theme {
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: #EEF2F4; --color-ink: #12202B; --color-signal: #0B7A75; --color-amber: #B26A00; --color-mute: #5B6B77;
+}
+body { @apply bg-paper text-ink font-sans antialiased; }
+:focus-visible { outline: 3px solid var(--color-signal); outline-offset: 3px; }

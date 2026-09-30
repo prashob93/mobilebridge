@@ -1,0 +1,4 @@
+{ "name": "mobilebridge", "private": true, "type": "module",
+  "workspaces": ["packages/*", "server", "web"],
+  "scripts": { "dev:server": "npm run dev -w server", "dev:web": "npm run dev -w web",
+    "test": "npm test -w server", "build": "npm run build -w web" } }
