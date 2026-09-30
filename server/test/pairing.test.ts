@@ -80,3 +80,9 @@ test("reject closes the session", async () => {
   a.send({ type: "reject" });
   await l.next("rejected");
 });
+
+test("phone is told when a scanned session expires unapproved", async () => {
+  const { created } = await laptopSession();
+  const a = await join(created.sessionId, created.token); await a.next("joined");
+  await a.next("session-expired", 4000);
+});

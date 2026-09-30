@@ -42,7 +42,7 @@ export function startServer(port = Number(process.env.PORT ?? 8080), webDist = j
       switch (msg.type) {
         case "create-session": {
           if (session) return;
-          const { session: s, token } = createSession(ws, msg.pubkey, msg.client, (x) => send(x.laptop, { type: "session-expired" }) );
+          const { session: s, token } = createSession(ws, msg.pubkey, msg.client, (x) => { send(x.laptop, { type: "session-expired" }); send(x.android, { type: "session-expired" }); });
           session = s; role = "laptop";
           send(ws, { type: "session-created", sessionId: s.id, token, expiresAt: s.expiresAt });
           break;

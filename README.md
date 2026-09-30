@@ -32,3 +32,6 @@ process and must run elsewhere (Render, Fly.io, Railway, a VPS), behind HTTPS/WS
 2. In the repo: Settings -> Pages -> Source: GitHub Actions.
 3. In Settings -> Variables, add `SIGNALING_URL=https://<your-server>`.
 4. Push to `main`; `.github/workflows/pages.yml` tests, builds and deploys the PWA.
+
+## Android app (M2)
+See `android/README.md`. Open the `android/` folder in Android Studio.
