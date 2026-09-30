@@ -1,7 +1,11 @@
 package com.mobilebridge.android.pairing
 
+import android.app.Application
 import android.os.Build
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import com.mobilebridge.android.rtc.HandshakeCrypto
+import com.mobilebridge.android.rtc.LinkState
+import com.mobilebridge.android.rtc.PeerLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +26,13 @@ sealed interface PairState {
     data class Failed(val message: String) : PairState
 }
 
-class PairingViewModel : ViewModel() {
+class PairingViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow<PairState>(PairState.Idle)
     val state: StateFlow<PairState> = _state.asStateFlow()
+    private val _link = MutableStateFlow<LinkState>(LinkState.Idle)
+    val link: StateFlow<LinkState> = _link.asStateFlow()
+    private var peer: PeerLink? = null
+    @Volatile private var laptopPub: String? = null
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS) // free hosting can take ~1 minute to wake up
@@ -69,6 +77,8 @@ class PairingViewModel : ViewModel() {
 
     private fun close() {
         generation++
+        peer?.close(); peer = null; laptopPub = null
+        _link.value = LinkState.Idle
         socket?.close(1000, null)
         socket = null
     }
@@ -90,12 +100,26 @@ class PairingViewModel : ViewModel() {
             val m = runCatching { JSONObject(text) }.getOrNull() ?: return
             when (m.optString("type")) {
                 "joined" -> {
+                    // The laptop's key must match the fingerprint printed in the QR code, or the server could be lying.
+                    val pub = m.optString("laptopPubkey")
+                    if (pub.isEmpty() || HandshakeCrypto.fingerprint(pub) != qr.fingerprint)
+                        return showError("This laptop's identity doesn't match its QR code. Generate a new code and try again.")
+                    laptopPub = pub
                     val c = m.getJSONObject("client")
                     val browser = c.optString("browser", "Browser"); val os = c.optString("os", "Unknown OS")
                     laptopLabel = "$browser on $os"
                     _state.value = PairState.Confirm(browser, os)
                 }
-                "approved" -> _state.value = PairState.Connected(laptopLabel)
+                "approved" -> {
+                    _state.value = PairState.Connected(laptopLabel)
+                    val pub = laptopPub ?: return
+                    if (peer == null) {
+                        peer = PeerLink(getApplication(), qr.sessionId, pub, { p ->
+                            webSocket.send(JSONObject().put("type", "signal").put("payload", p).toString())
+                        }, { st -> if (gen == generation) _link.value = st }).also { it.start() }
+                    }
+                }
+                "signal" -> peer?.onSignal(m.getJSONObject("payload"))
                 "rejected" -> { close(); _state.value = PairState.Idle }
                 "session-expired" -> showError("This QR code expired. Generate a new one on your laptop and scan again.")
                 "peer-left" -> showError("The laptop disconnected.")

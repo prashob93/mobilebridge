@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { usePairing } from "./usePairing";
+import type { LinkState } from "./LaptopLink";
 
 function useCountdown(expiresAt?: number) {
   const [left, setLeft] = useState(0);
@@ -22,8 +23,14 @@ function Button({ children, onClick, quiet }: { children: React.ReactNode; onCli
   return <button onClick={onClick} className={`rounded-full px-6 py-3 font-medium ${quiet ? "text-ink shadow-[inset_0_0_0_2px_#12202B]" : "bg-ink text-paper"}`}>{children}</button>;
 }
 
+function linkText(l: LinkState) {
+  if (l.kind === "direct") return l.rttMs === undefined ? "Direct link open. Measuring speed…" : `Direct link to your phone ✓  ·  round trip ${l.rttMs} ms`;
+  if (l.kind === "failed") return l.message;
+  return "Opening a direct, encrypted link to your phone…";
+}
+
 export default function App() {
-  const { state, restart } = usePairing();
+  const { state, link, restart } = usePairing();
   const timer = useCountdown(state.kind === "waiting" ? state.expiresAt : undefined);
   const showQr = state.kind === "waiting" || state.kind === "expired";
 
@@ -42,7 +49,9 @@ export default function App() {
           {state.kind === "approved" ? (
             <>
               <h1 className="text-4xl font-bold leading-tight tracking-tight">{state.device.name} is paired.</h1>
-              <p className="mt-4 text-lg text-mute">The secure session is ready. Screen streaming arrives in the next milestone.</p>
+              <p className="mt-4 text-lg text-mute">{linkText(link)}</p>
+              {link.kind === "direct" && link.path && <p className="mt-2 text-sm text-mute">{link.path}</p>}
+              {link.kind === "failed" && <div className="mt-8"><Button onClick={restart}>Start over</Button></div>}
             </>
           ) : state.kind === "joined" ? (
             <>

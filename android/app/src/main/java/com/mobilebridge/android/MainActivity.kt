@@ -20,6 +20,7 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.mobilebridge.android.pairing.PairState
 import com.mobilebridge.android.pairing.PairingViewModel
+import com.mobilebridge.android.rtc.LinkState
 
 private val Paper = Color(0xFFEEF2F4)
 private val Ink = Color(0xFF12202B)
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun App(vm: PairingViewModel, onScan: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val link by vm.link.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize(), color = Paper) {
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(28.dp)) {
             Text("MobileBridge", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -77,7 +79,13 @@ private fun App(vm: PairingViewModel, onScan: () -> Unit) {
                 PairState.Approving -> Waiting("Waiting for your laptop…", null)
                 is PairState.Connected -> {
                     Heading("Connected ✓")
-                    Body("${s.laptop} is paired with this phone. Screen sharing arrives in the next update.")
+                    Body("${s.laptop} is paired with this phone.")
+                    Spacer(Modifier.height(12.dp))
+                    when (val l = link) {
+                        is LinkState.Direct -> Text(if (l.rttMs == null) "Direct link open. Measuring speed…" else "Direct link ✓  ·  round trip ${l.rttMs} ms", fontSize = 16.sp, color = Signal, fontWeight = FontWeight.Medium)
+                        is LinkState.Failed -> Text(l.message, fontSize = 16.sp, color = Amber)
+                        else -> Body("Opening a direct, encrypted link to your laptop…")
+                    }
                     Spacer(Modifier.height(28.dp))
                     OutlinedButton(onClick = vm::disconnect) { Text("Disconnect") }
                 }

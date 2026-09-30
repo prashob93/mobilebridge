@@ -6,3 +6,5 @@ dist/
 android/**/build/
 .gradle/
 local.properties
+
+android/.idea/

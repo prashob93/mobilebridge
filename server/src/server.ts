@@ -53,7 +53,7 @@ export function startServer(port = Number(process.env.PORT ?? 8080), webDist = j
           if (!r.ok) return send(ws, { type: "error", code: r.code, message: r.message });
           session = r.session; role = "android";
           session.android = ws; session.androidPub = msg.pubkey; session.device = msg.device;
-          send(ws, { type: "joined", client: session.client, expiresAt: session.expiresAt });
+          send(ws, { type: "joined", client: session.client, expiresAt: session.expiresAt, laptopPubkey: session.laptopPub });
           send(session.laptop, { type: "peer-joined", device: msg.device, pubkey: msg.pubkey });
           break;
         }

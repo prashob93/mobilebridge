@@ -35,3 +35,11 @@ process and must run elsewhere (Render, Fly.io, Railway, a VPS), behind HTTPS/WS
 
 ## Android app (M2)
 See `android/README.md`. Open the `android/` folder in Android Studio.
+
+## M3: direct link (WebRTC data channel)
+
+After the phone approves, it sends a signed WebRTC offer through the server. The laptop checks the signature against the
+phone key pinned at pairing, answers with its own signature, and the phone checks that against the key whose fingerprint was
+in the QR. Both sides then exchange ping/pong over a peer-to-peer DataChannel and show the round-trip time.
+No video yet (that is M4). STUN servers are set in `web/src/LaptopLink.ts` and `android/.../rtc/PeerLink.kt`;
+add a TURN entry in both if a network blocks direct connections.

@@ -35,14 +35,23 @@ const join = async (id: string, token: string) => {
 test("happy path: create → join → approve → signal relay", async () => {
   const { l, created } = await laptopSession();
   const a = await join(created.sessionId, created.token);
-  assert.deepEqual((await a.next("joined")).client, { browser: "Chrome", os: "Windows 11" });
+  const joined = await a.next("joined");
+  assert.deepEqual(joined.client, { browser: "Chrome", os: "Windows 11" });
+  assert.equal(joined.laptopPubkey, "LAPTOP_KEY");
   const pj = await l.next("peer-joined");
   assert.equal(pj.device.name, "Pixel 9"); assert.equal(pj.pubkey, "ANDROID_KEY");
   a.send({ type: "approve", signature: "sig" });
   assert.equal((await l.next("approved")).signature, "sig");
   await a.next("approved");
-  a.send({ type: "signal", payload: { sdp: "offer" } });
-  assert.deepEqual((await l.next("signal")).payload, { sdp: "offer" });
+  const offer = { kind: "offer", sdp: "v=0", sig: "s1" };
+  a.send({ type: "signal", payload: offer });
+  assert.deepEqual((await l.next("signal")).payload, offer);
+  const answer = { kind: "answer", sdp: "v=0", sig: "s2" };
+  l.send({ type: "signal", payload: answer });
+  assert.deepEqual((await a.next("signal")).payload, answer);
+  const ice = { kind: "ice", candidate: "candidate:1 1 udp 1 1.2.3.4 5 typ host", sdpMid: "0", sdpMLineIndex: 0 };
+  a.send({ type: "signal", payload: ice });
+  assert.deepEqual((await l.next("signal")).payload, ice);
 });
 
 test("wrong token is rejected and does not burn the session", async () => {
@@ -70,7 +79,7 @@ test("QR expires and later joins are refused", async () => {
 test("signals are not relayed before approval", async () => {
   const { l, created } = await laptopSession();
   const a = await join(created.sessionId, created.token); await a.next("joined");
-  a.send({ type: "signal", payload: 1 });
+  a.send({ type: "signal", payload: { kind: "offer", sdp: "v=0", sig: "x" } });
   await assert.rejects(l.next("signal", 400), /timeout|expected/);
 });
 
@@ -85,4 +94,13 @@ test("phone is told when a scanned session expires unapproved", async () => {
   const { created } = await laptopSession();
   const a = await join(created.sessionId, created.token); await a.next("joined");
   await a.next("session-expired", 4000);
+});
+
+test("malformed signal payloads are refused, not relayed", async () => {
+  const { l, created } = await laptopSession();
+  const a = await join(created.sessionId, created.token); await a.next("joined"); await l.next("peer-joined");
+  a.send({ type: "approve", signature: "sig" }); await l.next("approved"); await a.next("approved");
+  a.send({ type: "signal", payload: { sdp: "no kind" } });
+  assert.equal((await a.next("error")).code, "bad_message");
+  await assert.rejects(l.next("signal", 400), /timeout|expected/);
 });
